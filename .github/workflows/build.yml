@@ -1,0 +1,37 @@
+name: Build IPA
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+      - name: Projekt erzeugen
+        run: xcodegen generate
+      - name: App bauen
+        run: |
+          xcodebuild -project Vynox.xcodeproj -scheme Vynox -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: IPA packen
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/Vynox.app Payload/
+          zip -r Vynox.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vynox-ipa
+          path: Vynox.ipa
+      - name: Release mit IPA
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Vynox
+          make_latest: true
+          files: Vynox.ipa
